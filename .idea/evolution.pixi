@@ -1,0 +1,603 @@
+// карочи код на pixilang
+// берёт число возврат-строка
+fn n2s( $n ) {
+	$s=""
+	num_to_str( $s, $n )
+	ret( $s)
+}
+
+fn GetX($x){    
+	ret( ($x*16)-389)
+}
+
+fn GetY($y){
+	ret(($y*16)-209)
+}
+
+fn SetLand($x,$y){
+	fbox(GetX($x), GetY($y), 15, 15, #555555)
+}
+
+fn SetFood($x,$y){
+	fbox(GetX($x), GetY($y), 15, 15, #00aa00)
+}  
+
+fn SetYad($x,$y){
+	fbox(GetX($x), GetY($y),15,15,#ff0000)
+}   
+
+fn SetEmpty($x,$y){
+	fbox(GetX($x) , GetY($y), 15, 15, #000000)
+}
+//-------------------------------------
+fn generateX(){
+	$n= rand() div 762
+	ret($n+1) 
+}
+//-------------------------------------
+fn generateY(){
+	$n= rand() div 1489
+	ret($n+1)
+}
+//-------------------------------------    
+//////////////////   РИСУЕМ КАРКАС МИРА ///////////////////////////////////
+fn Setka(){
+	fbox( -390,-210,720,384,BLACK)
+	$x=-390 
+	while($x<331){
+		line($x,-210,$x,174,#999999)  $x=$x+16
+	}
+	$y=-210
+	while($y<175){
+		line(-390,$y,330,$y,#999999)    $y=$y+16
+	}
+	$x=0
+	$y=0
+	while ($x<45){
+		SetLand($x,$y)   SetLand($x,$y+23)  $x=$x+1
+	} 
+	$x=0
+	$y=1
+	while ($y<23){
+		SetLand($x,$y)   SetLand($x+44,$y)  $y=$y+1
+	}
+	$x=9
+	$y=1
+	while ($y<8){
+		SetLand($x,$y)   SetLand($x+11,15-$y)  $y=$y+1
+	}
+}
+
+//-------  РИСУЕМ ЕДУ   --------------------
+fn FoodPlace ( $count ){
+	$i=0
+	while ( $i< $count ){
+		$x= generateX()
+		$y= generateY()
+		if (if_some_there($x,$y)==4){
+			SetFood($x,$y)
+			$i=$i+1 	 
+		}
+	}
+}
+
+//-----  РИСУЕМ ЯД   -----------------------
+fn YadPlace( $count ){
+	$i=0
+	while ( $i< $count ){
+		$x= generateX()
+		$y= generateY()
+		if (if_some_there($x,$y)==4){
+			SetYad($x,$y)
+			$i=$i+1  
+		}
+	}
+}
+
+
+//-----  РИСУЕМ ЕДУ ИЛИ ЯД   -----------------------
+fn FoodYadPlace( ) {
+	$n= mod(rand(),FOODYAD)
+	if ($n==0) {  YadPlace(1)  }
+	else {  FoodPlace(1) }     
+}
+
+
+//----------------  РИСУЕМ БИО  ------------------------
+fn  BiosPlace(){
+	$i=0
+	while ( $i< MAX_BIOS_COUNT ){
+		$x= generateX()
+		$y= generateY()
+		if (if_some_there($x,$y)==4){
+			bios[$i,X_COORD]=$x
+			bios[$i,Y_COORD]=$y
+			bio_show( $i )
+			$i=$i+1
+		}
+	}
+}
+
+// --  есть ли что-то там   --------------------
+// in -  координата Х, координата У  -----------
+// out - 4 если пусто
+//       3 если еда
+//       2 если сородич
+//       1 если стена
+//       0 если яд
+
+fn if_some_there( $x, $y ){
+	$color = get_dot(GetX($x) + 1, GetY($y) + 1)
+	if ( $color==#ff0000 ) { ret(0) }  
+	if ( $color==#555555 ) { ret(1) }
+	if ( $color==#00aa00 ) { ret(3) }
+	if ( $color==#000000 ) { ret(4) }
+	ret(2) 
+}
+
+
+//------------------ находим живых, заполняем массив eld-----------------------    
+fn findEld(){     
+	$i=0
+	$k=0
+	while ( $i < MAX_BIOS_COUNT ){ 
+		if ( bios[$i, HEALTH] > 0 ) {
+			eld[ $k, 0]=$i
+			$k=$k+1
+		}
+		$i=$i+1  
+	}
+}
+
+//-----==========------------------------------------------
+fn findDead(){
+	$i=0
+	while ($i< MAX_BIOS_COUNT ){
+		if ( bios[$i,HEALTH]<=0 )  { break }
+		$i=$i+1
+	} 
+	ret($i)
+}
+
+
+fn infoLast($z) {
+	infoText[9,0]= infoText[8,0] infoText[8,0]= infoText[7,0] 
+	infoText[7,0]= infoText[6,0] infoText[6,0]= infoText[5,0]
+	infoText[5,0]= infoText[4,0] infoText[4,0]= infoText[3,0] 
+	infoText[3,0]= infoText[2,0] infoText[2,0]= infoText[1,0] 
+	infoText[1,0]= infoText[0,0] infoText[0,0]= $z
+	fbox(334,-200,60,180,#003300)
+	$i=0
+	while $i<10{
+		print(n2s( infoText[$i,0] ), 364, -190+$i*16 )
+		$i=$i+1
+	}
+}
+
+
+fn infoStep(){
+	fbox(-340,205,50,10,BLACK)
+	print(n2s(steps),-315,210)
+}
+
+fn info(){
+	fbox(-340,180,50,10,BLACK)
+	print(n2s(steps),-315,185)
+
+	$i=0
+	$x=-280
+	while ( $i< END_BIOS_LIVE ){
+		$q=eld[$i,0]
+		$color= get_color( 0, bios[$q,C_GREEN], bios[$q,C_BLUE] )
+		fbox($x,180,26,40, $color)
+		print(n2s(bios[$q, HEALTH]),$x+13,191)    
+		print(n2s(bios[$q, GENER ]),$x+13,211) 
+		$i=$i+1
+		$x=$x+30
+	}
+
+	$x=$x+30
+
+	fbox($x,180,200,20,#333300)
+	print(n2s(GNR+1),$x+100,190) 
+}
+
+fn grafik_fon($GNR,$grafTop){
+	line(-350,190,400,190,#006600)
+
+	$zz=170   $nn=20*$grafTop
+	while ($zz>-240){
+		line(-350,$zz,400,$zz,#006600)
+		print(n2s($nn),-375,$zz,#00aa00)
+		$nn=$nn+20*$grafTop
+		$zz=$zz-20
+	}
+
+	$dsd=50 $zz=-350  $nn=0
+	while ($zz<400) {
+		line($zz,190,$zz,-240,#006600)
+		print(n2s($nn),$zz,198,#00aa00)
+		$nn=$nn+200
+		$zz=$zz+$dsd
+	}
+}
+
+
+fn dbg1($n) {
+	print(n2s( $n ),340, ttt)    ttt=ttt+10
+}
+
+fn dbg2($n) {
+	print(n2s( $n ),360, ttt)    ttt=ttt+10
+}
+ 
+fn dbg3($n) {
+	print(n2s( $n ),380, ttt)    ttt=ttt+10
+}
+
+fn dbgClr() {
+	fbox(330,-210,70,380 , BLACK)    ttt=-200
+}
+//--прибавка здоровья---------------------------
+// in - номер био, количество здоровья----------
+// out- количество здоровья---------------------
+fn bio_health_add($bio, $h){
+	$hlh=bios[ $bio, HEALTH ]
+	$hlh=$hlh+$h
+	if ( $hlh>HEALTH_MAX ) { $hlh= HEALTH_MAX }
+	bios[ $bio, HEALTH ]=$hlh
+	ret( $hlh )
+}
+
+//--убавление здоровья--------------------------
+// in - номер био, количество здоровья----------
+// out- количество здоровья---------------------
+fn bio_health_sub( $bio,$h ) {
+	$hlh=bios[ $bio, HEALTH ]
+	$hlh=$hlh-$h
+	if $hlh<0  { $hlh=0 }
+	bios[ $bio , HEALTH ]=$hlh
+	ret( $hlh )
+}
+
+// -- увеличение адреса команды   --------------
+//  in - номер bio, насколько прибавить адрес --
+fn bio_inc_command_address( $bio, $a ) {
+	$adr=bios[$bio,ADR]+$a
+	if ($adr >= MIND_SIZE ) { $adr=$adr - MIND_SIZE }
+	bios[$bio,ADR]=$adr
+}
+
+//--генерация мозга    -------------------------
+// in - номер био-------------------------------
+fn bio_generateMind( $bio ) {
+	$t=0
+	while($t< MIND_SIZE ){
+		bios[$bio,$t]= rand() div 520
+		$t=$t+1
+	}
+} 
+
+// -- получение Х-координаты рядом     ---------
+//  с био по направлению              ----------
+// in - номер био, направление    --------------
+// out - X -  координата          --------------
+fn bio_X_from_vektor( $bio, $n ){
+	$x=bios[$bio,X_COORD] 
+	$n=$n+bios[$bio, TRANSF]
+	$n=mod($n,8)
+	if ( $n==0 || $n==6 || $n==7 ) { $x=$x-1 }
+	else { if( $n==2 || $n==3 || $n==4 ) { $x=$x+1 } }
+	ret( $x )
+}
+
+// -- получение Y-координаты рядом     ---------
+//  с био по направлению              ----------
+// in - номер био, направление    --------------
+// out - Y -  координата          -------------- 
+fn bio_Y_from_vektor( $bio, $n ) {
+	$y=bios[$bio,Y_COORD] 
+	$n=$n+bios[$bio, TRANSF]
+	$n=mod($n,8)
+	if ( $n<3 ) { $y=$y-1 }
+	else { if( $n==4 || $n==5 || $n==6 ) { $y=$y+1 } }
+	ret( $y )
+}    
+
+// --- отображение био на экране   -------------
+// in ---    номер био  ------------------------
+fn bio_show( $bio ) {
+	$color= get_color( 0, bios[$bio,C_GREEN], bios[$bio,C_BLUE] )
+	$X= GetX(bios[$bio,X_COORD])
+	$Y= GetY(bios[$bio,Y_COORD])
+	fbox($X,$Y,15,15, $color)
+	print(n2s(bios[$bio,HEALTH]),$X+8,$Y+7)
+} 
+
+//  -- движение био, если возможно   -----------
+// in  номер био, направление
+fn bio_move( $bio, $n ) {
+	$x= bio_X_from_vektor( $bio, $n )
+	$y= bio_Y_from_vektor( $bio, $n )
+	$h= if_some_there( $x, $y )
+
+	if ($h==4) { 
+		SetEmpty(bios[$bio, X_COORD], bios[$bio, Y_COORD] )
+		bios[ $bio, X_COORD ]=$x   
+		bios[ $bio, Y_COORD ]=$y
+	}
+
+	if ($h==3) {
+		SetEmpty(bios[$bio, X_COORD], bios[$bio, Y_COORD] )
+		bios[ $bio, X_COORD ]=$x   
+		bios[ $bio, Y_COORD ]=$y
+		bio_health_add($bio, HEALTH_PLUS )
+		FoodYadPlace( )
+	}
+
+	if ($h==0) {
+		bio_health_sub( $bio, 310 )
+		SetYad( bios[$bio, X_COORD], bios[$bio, Y_COORD] )
+		bio_live= bio_live-1
+		ret
+	}  
+	if ( bio_health_sub($bio, 1 ) > 0 ) {
+		bio_inc_command_address( $bio, $h+1 )
+		bio_show( $bio ) 
+	} else { 
+		SetEmpty( bios[$bio, X_COORD], bios[$bio, Y_COORD] )
+		bio_live= bio_live-1 
+	}
+	ret
+}
+
+//  -- схватить еду или преобразовать яд   ---------------------------
+// in  номер био, направление
+fn bio_fire( $bio, $n ) {
+	$x= bio_X_from_vektor( $bio, $n )
+	$y= bio_Y_from_vektor( $bio, $n )
+	$h= if_some_there( $x, $y )
+	
+	if ($h==3) {  
+		SetEmpty($x,$y)
+		bio_health_add($bio, HEALTH_PLUS )
+		FoodYadPlace( )
+	}
+	
+	if ($h==0) {  
+		SetFood($x,$y)
+	}
+	
+	if ( bio_health_sub($bio, 1) > 0 ) { 
+		bio_show( $bio ) 
+		bio_inc_command_address( $bio, $h+1 ) 
+	} else { 
+		SetEmpty( bios[$bio, X_COORD], bios[$bio, Y_COORD] )
+		bio_live= bio_live-1 
+	} 
+	ret
+}
+
+//----------------------------=---------------------------------
+//--------------------------------------------------------------
+fn bio_step($bio) {
+	if ( bios[$bio, HEALTH]==0 ) { ret }
+	
+	$cikl=0
+	cc:
+	$cikl=$cikl+1
+
+	if ( $cikl<10 ) {
+		$command = bios[$bio,bios[$bio,ADR]]
+		
+		if ($command<8)  {// 0..7 сделать шаг
+			bio_move( $bio, $command )
+			ret
+		}
+		
+		if ($command<16) { // 8..15 схватить преобразовать
+			bio_fire( $bio, $command ) 
+			ret            
+		}
+		
+		if ($command<24) {// 16..23 посмотреть
+			$xxx= bio_X_from_vektor( $bio, $command )
+			$yyy= bio_Y_from_vektor( $bio, $command )
+			$aa=  if_some_there( $xxx, $yyy )
+			bio_inc_command_address( $bio, $aa+1 )
+			go cc
+		}
+		
+		if ($command<32) { // 24..31 повернуть
+			$command= mod($command,8)
+			bios[$bio, TRANSF] =  bios[$bio, TRANSF] + $command
+			if (  bios[$bio, TRANSF] > 7 ) {
+				bios[$bio, TRANSF] =  bios[$bio, TRANSF]-8 
+			}
+			bio_inc_command_address( $bio, 1 )
+			go cc
+		}
+		bio_inc_command_address( $bio, $command ) // 32..63 безусловный переход
+		go cc             
+	}
+	
+	if ( bio_health_sub($bio, 1) > 0 ){ bio_show( $bio ) }
+	else { SetEmpty( bios[$bio, X_COORD], bios[$bio, Y_COORD] )bio_live= bio_live-1  } 
+	ret
+}
+
+
+//------------   рождение нового поколения    --------------
+// ----   in  -  номер родителя из массива eld
+
+fn bio_child( $eld ) {
+	//-----------    обновление выжившего   ------------
+	$e=eld[$eld,0]
+	bios[$e,ADR]=0
+	bios[$e,HEALTH]=35
+	bios[$e,GENER]=  bios[$e,GENER]+1
+	bios[$e,C_BLUE]= bios[$e,C_BLUE]-30
+	bios[$e,TRANSF ]=rand() div 4681
+	if ( bios[$e,C_BLUE]<16 ) { bios[$e,C_BLUE]=45 }
+	bios[$e,C_GREEN]=0 
+
+	//-----------     создание копий     ----------------
+	$a=0
+	while ( $a< CHILD ) {
+		$d=findDead() 
+		$i=0
+		while ( $i< MIND_SIZE ) {
+			bios[$d,$i] = bios[$e,$i]
+			$i= $i+1
+		}
+
+		bios[$d,ADR]=0
+		bios[$d,HEALTH]=35
+		bios[$d,GENER]=  bios[$e,GENER]
+		bios[$d,C_BLUE]= 255
+		bios[$d,C_GREEN]=0 
+		bios[$e,TRANSF ]= rand() div 4681
+		$a=$a+1
+	}
+
+	//-------------------МУТАНТ-------------------------   
+
+	$a=0
+	while ( $a<MUTANT ) {
+		$d=findDead()
+		$i=0
+		
+		while ( $i< MIND_SIZE ) {
+			bios[$d,$i]=bios[$e,$i]  $i=$i+1
+		}
+
+		$i=0   $mu=$a+1
+		while( $i<$mu ) {
+			$b= rand() div 520 
+			$c= rand() div 520
+			bios[$d,$b]=$c
+			$i=$i+1
+		}
+
+		bios[$d,ADR]=0
+		bios[$d,HEALTH]=35
+		bios[$d,GENER]= 1
+		bios[$d,C_BLUE]= 255
+		bios[$d,C_GREEN]=160
+		bios[$e,TRANSF ]= rand() div 4681
+		$a=$a+1
+	}
+	ret
+}
+
+MAX_BIOS_COUNT = 64 //  максимальное количество живности
+END_BIOS_LIVE = 8   // кол-во живых, что бы начинать новый цикл
+BIO_SIZE = 72
+MIND_SIZE = 64
+MUTANT = 2          // мутантов на 8 ботов
+CHILD = (MAX_BIOS_COUNT / END_BIOS_LIVE)- MUTANT - 1
+HEALTH_PLUS = 10    // здоровья прибавляется от еды
+HEALTH_MAX = 90     // максимальное количество здоровья
+FOOD = 60           // количество еды на старте
+YAD = 60           // количество яда на старте
+FOODYAD = 2
+grafTOP = 1000   // максимальная продолжительность жизни поколения при которой моделирование завершается
+DELAY = 0
+
+
+// 0..63 мозг
+ADR = MIND_SIZE + 0			// адрес команды
+X_COORD = MIND_SIZE + 1	// Х-координата
+Y_COORD = MIND_SIZE + 2	// У-координата
+HEALTH = MIND_SIZE + 3		// здоровье
+GENER = MIND_SIZE + 4			// пройденно поколений
+C_BLUE = MIND_SIZE + 5		// цвет
+C_GREEN = MIND_SIZE + 6		// цвет
+TRANSF= MIND_SIZE + 7		// направление
+// out - 4 если пусто
+//       3 если еда
+//       2 если сородич
+//       1 если стена
+//       0 если яд
+
+bios=new( MAX_BIOS_COUNT , BIO_SIZE ,INT16)
+eld=new( END_BIOS_LIVE ,1,INT16)
+infoText=new(10,1,INT32)
+graf0=new(6000,1,INT32)
+bat=0
+
+fn grafik($graf,$nameFile) {
+	save($graf, $nameFile, FORMAT_PIXICONTAINER)
+}
+
+fn simulation() {
+	$graf0=new(6000,1,INT32)
+	clear()   
+	showAble=0
+	steps= 0
+	bio_live= MAX_BIOS_COUNT
+	clean($graf0, 800000)
+	rand_seed( get_seconds())
+	clean(infoText)
+	for (i= 0; i<MAX_BIOS_COUNT; i=i+1){
+		bio_generateMind( i )
+		bios[i,ADR]=0
+		bios[i,HEALTH]=35
+		bios[i,GENER]=1
+		bios[i,C_BLUE]=255  
+		bios[i,C_GREEN]=0
+		bios[i,TRANSF ]=rand() div 4681
+	}
+	Setka()
+	FoodPlace(FOOD)
+	YadPlace(YAD)
+	BiosPlace()
+	frame(500)
+	
+	for (GNR = 0; !(GNR==8000 || steps > grafTOP); GNR=GNR+1){
+		//симуляция поколения
+		for (i = 0; bio_live > END_BIOS_LIVE; i=i+1){
+			bio_step(i)
+			if (i== MAX_BIOS_COUNT ){
+				i=0
+				steps=steps+1 
+				if ( showAble==1 )  { infoStep()  frame()  }
+				while( get_event() ) {
+					if EVT[ EVT_TYPE ] == EVT_MOUSEBUTTONDOWN {
+						rand_seed( get_seconds())
+						if (showAble==0) { showAble=1 }
+						else { showAble=0 }
+					}
+					if EVT[ EVT_TYPE ] == EVT_QUIT  { halt } 
+				}
+			}
+		}
+		//обновление мира
+		findEld()
+		info()
+		infoLast(steps)  
+		$graf0[GNR,0]=steps
+		frame(DELAY)
+		bio_live= MAX_BIOS_COUNT
+		steps=0
+		ss=0
+		while(ss < END_BIOS_LIVE) {
+			bio_child(ss)
+			ss = ss +1 
+		}
+		Setka()
+		FoodPlace(FOOD)
+		YadPlace(YAD)
+		BiosPlace()
+		if ( showAble==1 ) { frame() }
+	}
+	ret($graf0)
+}
+
+fn runFewSim ($simCount){
+	for ($crtSim = 0; $crtSim<$simCount; $crtSim = $crtSim + 1){
+		grafik(simulation(),getFileName($crtSim ) )
+	}
+}
+
+runFewSim(4)
